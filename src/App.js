@@ -1,13 +1,15 @@
 import logo from './logo.svg';
 import './App.css';
-import { Navbar, NavDropdown, Nav, Container } from 'react-bootstrap';
+import { Navbar, NavDropdown, Nav, Container, Row, Col } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import SampleData from './sample_data.json';
+import Diary from './components/Diary';
 
 function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <Navbar bg="light" expand="lg">
+        <Navbar variant="dark" bg="dark" expand="lg">
           <Container>
             <Navbar.Brand href="#home">Tags im Museum - Tagebücher</Navbar.Brand>
             {/* <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -28,6 +30,9 @@ function App() {
         </Navbar>
       </header>
       <main>
+        <Container>
+          <Diary />
+        </Container>
       </main>
       <footer>
       </footer>
