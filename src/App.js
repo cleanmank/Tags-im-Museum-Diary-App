@@ -1,9 +1,11 @@
 import logo from './logo.svg';
-import './App.css';
+import './App.scss';
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { Navbar, NavDropdown, Nav, Container, Row, Col } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import SampleData from './sample_data.json';
 import Diary from './components/Diary';
+import Diaries from './components/Diaries';
 
 function App() {
   return (
@@ -31,7 +33,14 @@ function App() {
       </header>
       <main>
         <Container>
-          <Diary />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/entries" element={<Diary />} />
+              <Route path="/diaries/:id" element={<Diary />} />
+              <Route path="/diaries" element={<Diaries />} />
+              <Route path="/" element={<h5>Start page</h5>} />
+            </Routes>
+          </BrowserRouter>
         </Container>
       </main>
       <footer>
