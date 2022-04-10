@@ -2,7 +2,7 @@
 export class WebClient {
     version = "v0.1"
     
-    baseUrl = process.env.NODE_ENV === "development" ? `/api/${this.version}` : `http://tim-api.mindfav.com/api/${this.version}`
+    baseUrl = process.env.NODE_ENV === "development" ? `/api/${this.version}` : `https://tim-api.mindfav.com/api/${this.version}`
 
     CallApi(url, method, headers, body){
         const handler = (resolve, reject) => {
