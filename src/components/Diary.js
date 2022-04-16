@@ -24,17 +24,33 @@ export default function Diary(props) {
         if (id) {
             webClient.GetDiaryEntries(id).then(
                 (entries) => {
-                    entries.forEach((entry) => setIndex(index.add(entry.id, entry.content_text)))
-                    console.log(index.search("Museum"))
                     console.log(entries)
+                    // add every diary entry to the index
+                    let startDate = null
+                    let endDate = null
+                    entries.forEach((entry, i) => {
+                        if (i === 0)
+                            startDate = DateTime.fromSQL(entry.date_of_entry.date + " " + entry.date_of_entry.timezone)
+                        if (i === entries.length - 1)
+                            endDate = DateTime.fromSQL(entry.date_of_entry.date + " " + entry.date_of_entry.timezone)
+                        setIndex(index.add(entry.id, entry.content_text))
+                    })
+                    console.log(startDate)
+                    console.log(endDate)
+                    console.log("entries loaded: " + entries.length)
                     setState(prevState => {
-                        return {...prevState, diary_entries: entries.map(entry => { 
-                            return {
-                                id: entry.id,
-                                date: DateTime.fromSQL(entry.date_of_entry.date + " " + entry.date_of_entry.timezone),
-                                text: entry.content_text
-                            }
-                        })}
+                        return {
+                            ...prevState, 
+                            diary_entries: entries.map(entry => { 
+                                return {
+                                    id: entry.id,
+                                    date: DateTime.fromSQL(entry.date_of_entry.date + " " + entry.date_of_entry.timezone),
+                                    text: entry.content_text
+                                }
+                            }),
+                            startDate: startDate,
+                            endDate: endDate
+                        }
                     })
                 },
                 (err) => console.error(err)
@@ -58,7 +74,7 @@ export default function Diary(props) {
 
     const [state, setState] = useState(
         {
-            searchDate: null,
+            searchDateRange: null,
             diary_entries: []
         }
     )
@@ -69,7 +85,7 @@ export default function Diary(props) {
     }
 
     const handleSearchDateChanged = (daterange) => {
-        console.log(daterange)
+        console.log("selected date range changed", daterange)
         setState(prevState => { return {...prevState, searchDateRange: daterange}})
     }
 
@@ -144,14 +160,35 @@ export default function Diary(props) {
     }
 
     const renderResults = () => {
+        const entryFilter = (entry) => {
+            if (state.searchDateRange && (results.length > 0 || query)) {
+                return isInDateRange(entry.date, state.searchDateRange) && results.some(res => res == entry.id)
+            }
+
+            if (state.searchDateRange) {
+                return isInDateRange(entry.date, state.searchDateRange)
+            }
+
+            if ((results.length > 0 || query)) {
+                return results.some(res => res == entry.id)
+            }
+        }
         console.log(results)
-        return state.diary_entries.filter(entry => results.some(res => res == entry.id)).map(entry =>             
+        const filtered = state.diary_entries.filter(entryFilter)
+        console.log(filtered)
+        return filtered.length > 0 ? filtered.map(entry =>             
             <Row>
                 <Col className='mt-3'>
                     <DiaryEntry date={entry.date} text={entry.text} mark={query} />
                 </Col>
             </Row>
         )
+        :
+        <Row>
+            <Col className='mt-3'>
+                <h5>Zu dieser Suche gibt es keine Ergebnisse.</h5>
+            </Col>
+        </Row>
     }
 
     return <>
@@ -159,8 +196,9 @@ export default function Diary(props) {
             onSearchDateChanged={(daterange) => handleSearchDateChanged(daterange)}
             dateNeedsMarker={(date) => checkIfDateNeedsMarker(date)}
             getMonthEntryCount={(date) => getMonthEntryCount(date)}
-            getYearEntryCount={(date) => getYearEntryCount(date)} />
-        {/* {renderEntries()} */}
+            getYearEntryCount={(date) => getYearEntryCount(date)}
+            minDate={state.startDate}
+            maxDate={state.endDate} />
         {renderResults()}
     </>
 }

@@ -2,27 +2,33 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Form, Row, Col, InputGroup, Button, Dropdown, DropdownButton } from 'react-bootstrap'
 import Calendar from 'react-calendar'
 import { DateTime } from "luxon";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faCalendar } from '@fortawesome/free-regular-svg-icons'
 
-export default function DiaryEntry(props) {
+export default function SearchBar(props) {
     
-    const minDate = DateTime.fromFormat("1932-09-01", "yyyy-MM-dd")
-    const maxDate = DateTime.fromFormat("1946-07-31", "yyyy-MM-dd")
+    const minDate = props.minDate || DateTime.fromFormat("1932-09-01", "yyyy-MM-dd")
+    const maxDate = props.maxDate || DateTime.fromFormat("1946-07-31", "yyyy-MM-dd")
+
+    // minDate.plus({ day: 1 }), minDate.plus({ days: 5 })
 
     const [state, setState] = useState(
         {
-            selectedDateRange: [minDate.plus({ day: 1 }), minDate.plus({ days: 5 })]
+            selectedDateRange: null
         }
     )
 
     const [searchTerm, setSearchTerm] = useState('')
 
+    const { onSearchValueChanged } = props
+
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
-            props.onSearchValueChanged && props.onSearchValueChanged(searchTerm)
+            onSearchValueChanged && onSearchValueChanged(searchTerm)
         }, 500)
     
         return () => clearTimeout(delayDebounceFn)
-      }, [searchTerm])
+      }, [searchTerm, onSearchValueChanged])
 
     const handleSearchInputChange = (e) => {
         let value = e.target.value;
@@ -95,6 +101,10 @@ export default function DiaryEntry(props) {
         }
     }
 
+    const getTitle = () => {
+        return state.selectedDateRange ? state.selectedDateRange.map(date => date.toFormat("dd.MM.yyyy")).join(" - ") : "Datum auswählen"
+    }
+
     return (
         <Row>
             <Col className='mt-3'>
@@ -109,7 +119,7 @@ export default function DiaryEntry(props) {
                     />
                     <DropdownButton
                         variant="outline-secondary"
-                        title={state.selectedDateRange ? state.selectedDateRange.map(date => date.toFormat("dd.MM.yyyy")).join(" - ") : "Datum auswählen"}
+                        title={<><FontAwesomeIcon className='me-2' icon={faCalendar} />{getTitle()}</>}
                         id="input-group-dropdown-1">
                             <div className='p-3'>
                                 <Calendar
