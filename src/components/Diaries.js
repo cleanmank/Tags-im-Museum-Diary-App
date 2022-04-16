@@ -35,8 +35,8 @@ export default function Diaries() {
             return (
                 <Row key={diary.id}>
                     <Col className='mt-3'>
-                        <Link to={"/diaries/" + diary.id}>
-                            <Card className="text-decoration-none text-regular">
+                        <Link to={"/diaries/" + diary.id} className="text-decoration-none text-dark">
+                            <Card>
                                 <Card.Body>
                                     <p className='mb-2'><small>{diary.number}</small></p>
                                     <h6>{diary.title}</h6>
@@ -48,7 +48,7 @@ export default function Diaries() {
                     </Col>
                 </Row>
             )
-            })
+        })
     }
 
     return <>
