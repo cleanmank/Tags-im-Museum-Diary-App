@@ -1,5 +1,6 @@
 import logo from './logo.svg';
 import './App.scss';
+import React, { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link, NavLink } from "react-router-dom";
 import { Navbar, NavDropdown, Nav, Container, Row, Col } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -9,10 +10,24 @@ import Diaries from './components/Diaries';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCog, faBook, faCircleNodes, faHome } from '@fortawesome/free-solid-svg-icons'
 import { TagCloud } from './components/TagCloud';
+import Preferences from './components/Preferences';
 
 function App() {
+  let appClasses = ["App"]
+
+  const [preferences, setPreferences] = useState("normal")
+
+  const handlePreferencesChanged = (prefs) => {
+    console.log(prefs)
+    setPreferences(prefs)
+  }
+
+  if (preferences.fontStyle && preferences.fontStyle === "fraktur") {
+    appClasses.push("font-fraktur")
+  }
+
   return (
-    <div className="App">
+    <div className={appClasses.join(" ")}>
       <BrowserRouter>
         <header className="App-header">
           <Navbar variant="dark" bg="dark" expand="lg">
@@ -48,6 +63,7 @@ function App() {
               <Route path="/entries" element={<Diary />} />
               <Route path="/diaries/:id" element={<Diary />} />
               <Route path="/diaries" element={<Diaries />} />
+              <Route path="/preferences" element={<Preferences preferences={preferences} onPreferencesChanged={(prefs) => handlePreferencesChanged(prefs)}/>} />
               <Route path="/tagcloud" element={<TagCloud />} />
               <Route path="/" element={<h5>Start page</h5>} />
             </Routes>
