@@ -32,3 +32,17 @@ h5 {
 .font-normal {
   font-family: $fonts;
 }
+
+.logo {
+  height: 60px;
+}
+
+.navbar-toggler {
+    border-radius: 2px;
+    padding: 0.7em;
+    border: 2px solid;
+
+  &.collapsed {
+    border: 0;
+  }
+}
