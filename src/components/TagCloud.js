@@ -3,81 +3,138 @@
  * MIT License - https://github.com/mcc108/TagCloud
  */
 
- import React, { useState, useEffect, useRef, useCallback } from 'react'
- import { Form, Row, Col, InputGroup, Button, Dropdown, DropdownButton } from 'react-bootstrap'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Form, Row, Col, InputGroup, Button, Dropdown, DropdownButton } from 'react-bootstrap'
 
- const useMousePosition = () => {
-   const [mousePosition, setMousePosition] = useState({
-     left: 0,
-     top: 0,
-   });
+export const useRect = (ref) => {
+    const [rect, setRect] = useState({});
+
+    const set = () => setRect(ref && ref.current ? ref.current.getBoundingClientRect() : {});
+
+    const useEffectInEvent = (event, useCapture) => {
+      useEffect(() => {
+        set();
+        window.addEventListener(event, set, useCapture);
+        return () => window.removeEventListener(event, set, useCapture);
+      }, []);
+    };
+
+    useEffectInEvent('resize');
+    useEffectInEvent('scroll', true);
+  
+    return [rect, ref];
+};
+
+const getWindowDimensions = (ref) => {
+    let parent = ref.current?.parentNode;
+    return { width: parent?.offsetWidth || 0, height: parent?.offsetHeight || 0 };
+  }
+
+const useWindowDimensions = (ref) => {
+    const [windowDimensions, setWindowDimensions] = useState(getWindowDimensions(ref));
+
+    useEffect(() => {
+        const handleResize = () => {
+          setWindowDimensions(getWindowDimensions(ref));
+        }
+
+        setWindowDimensions(getWindowDimensions(ref))
+    
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    
+    return windowDimensions;
+}
+
+const useMousePosition = (ref) => {
+    const [mousePosition, setMousePosition] = useState({
+        left: 0,
+        top: 0,
+    });
+
+    const handleMouseMove = (e) => {
+        setMousePosition({
+            left: e.pageX,
+            top: e.pageY,
+        })
+    }
  
-   const handleMouseMove = useCallback(
-     (e) =>
-       setMousePosition({
-         left: e.pageX,
-         top: e.pageY,
-       }),
-     []
-   );
+    useEffect(() => {
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
+
+//    const callbackRef = useCallback(
+//         (node) => {
+//             if (ref.current) {
+//                 ref.current.removeEventListener("mousemove", handleMouseMove);
+//             }
+
+//             ref.current = node;
+
+//             if (ref.current) {
+//                 ref.current.addEventListener("mousemove", handleMouseMove);
+//             }
+//         },
+//         [handleMouseMove]
+//    );
  
-   const ref = useRef();
- 
-   const callbackRef = useCallback(
-        (node) => {
-            if (ref.current) {
-                ref.current.removeEventListener("mousemove", handleMouseMove);
-            }
+   return [ref, mousePosition];
+};
 
-            ref.current = node;
+export function TagCloud(props) {
 
-            if (ref.current) {
-                ref.current.addEventListener("mousemove", handleMouseMove);
-            }
-        },
-        [handleMouseMove]
-   );
- 
-   return [callbackRef, mousePosition];
- };
-
- export function TagCloud(props) {
-
+    const ref = useRef()
     const requestRef = React.useRef()
     const previousTimeRef = React.useRef()
     const mouseX0Ref = React.useRef()
     const mouseY0Ref = React.useRef()
-    const mousePosition = React.useRef({ x: 0, y: 0 })
+    const mousePositionRef = React.useRef({ x: 0, y: 0 })
     const isActive = React.useRef(false)
-
+    const radiusRef = React.useRef(250) // rolling radius, unit `px`
+    const depthRef = React.useRef(2 * radiusRef.current)
+    const sizeRef = React.useRef(1.5 * radiusRef.current)
     const getMaxSpeed = (name) => ({ slow: 0.5, normal: 1, fast: 2 })[name] || 1;
     const getInitSpeed = (name) => ({ slow: 16, normal: 32, fast: 80 })[name] || 32;
+    const maxSpeedRef = React.useRef(getMaxSpeed('normal')) // rolling max speed, optional: `slow`, `normal`(default), `fast`
+    const initSpeedRef = React.useRef(getInitSpeed('slow')) // rolling init speed, optional: `slow`, `normal`(default), `fast`
+    const directionRef = React.useRef(135) // rolling init direction, unit clockwise `deg`, optional: `0`(top) , `90`(left), `135`(right-bottom)(default)...
+    const keepRef = false // whether to keep rolling after mouse out area, optional: `false`, `true`(default)(decelerate to rolling init speed, and keep rolling with mouse)
 
     const [textItems, setTextItems] = useState([])
-    const [ref, mp] = useMousePosition()
-
-    // const [mousePosition, setMousePosition] = useState({x: 0, y: 0})
+    const [mpref, mp] = useMousePosition(ref)
+    const [rect, rectref] = useRect(ref)
+    const { width, height } = useWindowDimensions(ref)
 
     useEffect(() => {
         console.log("mouse changed", mp);
+        let r = rect
+        console.log(r)
+        if (r) {
+            // this doesn't cause a re-render, but something in next() will
+            let x = (mp.left - (r.left + r.width / 2)) / 5
+            let y = (mp.top - (r.top + r.height / 2)) / 5;
 
-        // this doesn't cause a re-render, but something in next() will
-        let position = {x: mp.left, y: mp.top}
-        mousePosition.current = position
-        // next(position)
+            mousePositionRef.current = {x, y}
+        }
+
     }, [mp]);
 
-    const [radius, setRadius] = useState(250)
+    useEffect(() => {
+        console.log("width changed", width)
+        radiusRef.current = width / 2 - 20
+        console.log("radius changed", radiusRef.current)
+        depthRef.current = radiusRef.current * 2
+        sizeRef.current = radiusRef.current * 1.5
+
+        // recalculate the text item coordinates
+        setTextItems(state.textNodes.map((text, index) => createTextItem(text, index)))
+    }, [width])
 
     const [state, setState] = useState(
         {
-            textNodes: ["test1", "test2", "test3", "test4"],
-            depth: 2 * radius,
-            size: 1.5 * radius,
-            maxSpeed: getMaxSpeed('slow'), // rolling max speed, optional: `slow`, `normal`(default), `fast`
-            initSpeed: getInitSpeed('slow'), // rolling init speed, optional: `slow`, `normal`(default), `fast`
-            direction: 0, // rolling init direction, unit clockwise `deg`, optional: `0`(top) , `90`(left), `135`(right-bottom)(default)...
-            keep: false, // whether to keep rolling after mouse out area, optional: `false`, `true`(default)(decelerate to rolling init speed, and keep rolling with mouse)
+            textNodes: ["Lichtbildvorführung", "Pilzberatung", "Volkssturm", "Bergungsraum"],
         }
     )
 
@@ -90,44 +147,23 @@
         return item;
     }
 
-    const requestInterval = (fn, delay) => {
-        const requestAnimFrame = ((() => window.requestAnimationFrame) || ((callback, element) => {
-            window.setTimeout(callback, 1000 / 60);
-        }))();
-
-        let start = new Date().getTime();
-        const handle = {};
-        const loop = () => {
-            handle.value = requestAnimFrame(loop)
-            const current = new Date().getTime()
-            const delta = current - start
-
-            if (delta >= delay) {
-                fn.call();
-                start = new Date().getTime();
-            }
-        }
-        handle.value = requestAnimFrame(loop);
-        return handle;
-    }
-
     const next = (mousePosition) => {
         // console.log("update!")
 
         let mX = mousePosition.x;
         let mY = mousePosition.y;
-        console.log("mouse at", {mX, mY})
+        // console.log("mouse at", {mX, mY})
 
-        if (!state.keep && !isActive.current) {
+        if (!keepRef.current && !isActive.current) {
             console.log("reset mouse")
             // reset distance between the mouse and rolling center x/y axis
             mX = Math.abs(mX - mouseX0Ref.current) < 1 ? mouseX0Ref.current : (mX + mouseX0Ref.current) / 2;
             mY = Math.abs(mY - mouseY0Ref.current) < 1 ? mouseY0Ref.current : (mY + mouseY0Ref.current) / 2; 
         }
 
-        console.log("mouse for calc: ", {mX, mY})
-        const a = -(Math.min(Math.max(-mY, -state.size), state.size) / radius) * state.maxSpeed;
-        const b = (Math.min(Math.max(-mX, -state.size), state.size) / radius) * state.maxSpeed;
+        // console.log("mouse for calc: ", {mX, mY})
+        const a = -(Math.min(Math.max(-mY, -sizeRef.current), sizeRef.current) / radiusRef.current) * maxSpeedRef.current;
+        const b = (Math.min(Math.max(-mX, -sizeRef.current), sizeRef.current) / radiusRef.current) * maxSpeedRef.current;
 
         if (Math.abs(a) <= 0.01 && Math.abs(b) <= 0.01) {
             //pause
@@ -147,7 +183,7 @@
         // update item positions
         setTextItems(prevTextItems => {
             let textItemsCpy = [...prevTextItems];
-            console.log("update item positions", textItemsCpy)
+            // console.log("update item positions", textItemsCpy)
             textItemsCpy.forEach(item => {
                 const rx1 = item.x;
                 const ry1 = item.y * sc[1] + item.z * (-sc[0]);
@@ -157,7 +193,7 @@
                 const ry2 = ry1;
                 const rz2 = rz1 * sc[3] - rx1 * sc[2];
 
-                const per = (2 * state.depth) / (2 * state.depth + rz2);
+                const per = 2 * depthRef.current / (2 * depthRef.current + rz2);
 
                 item.x = rx2;
                 item.y = ry2;
@@ -185,12 +221,12 @@
 
         if (item.x && item.y && item.z && item.scale) {
 
-            const per = (2 * state.depth) / (2 * state.depth + item.z); // todo
+            const per = 2 * depthRef.current / (2 * depthRef.current + item.z); // todo
             let alpha = per * per - 0.25;
             alpha = (alpha > 1 ? 1 : alpha).toFixed(3);
     
-            const left = (item.x - 100 / 2).toFixed(2);
-            const top = (item.y - 50 / 2).toFixed(2);
+            const left = (item.x - 50 / 2).toFixed(2);
+            const top = (item.y - 20 / 2).toFixed(2);
             const transform = `translate3d(${left}px, ${top}px, 0) scale(${item.scale})`;
             style.WebkitTransform = transform;
             style.MozTransform = transform;
@@ -216,10 +252,10 @@
 
         let style = {}
         style.position = 'relative';
-        style.width = `${2 * radius}px`;
-        style.height = `${2 * radius}px`;
+        style.width = `${2 * radiusRef.current}px`;
+        style.height = `${2 * radiusRef.current}px`;
 
-        console.log("render elements: " + textItems)
+        // console.log("render elements: " + textItems)
 
         return <div style={style}>{textItems.map((item, index) => renderTextItem(item, index))}</div>;
     }
@@ -234,9 +270,9 @@
         const phi = Math.acos(-1 + (2 * index + 1) / textsLength);
         const theta = Math.sqrt((textsLength + 1) * Math.PI) * phi;
         return {
-            x: (state.size * Math.cos(theta) * Math.sin(phi)) / 2,
-            y: (state.size * Math.sin(theta) * Math.sin(phi)) / 2,
-            z: (state.size * Math.cos(phi)) / 2,
+            x: (sizeRef.current * Math.cos(theta) * Math.sin(phi)) / 2,
+            y: (sizeRef.current * Math.sin(theta) * Math.sin(phi)) / 2,
+            z: (sizeRef.current * Math.cos(phi)) / 2,
             scale: 1
         };
     }
@@ -248,7 +284,7 @@
                 const deltaTime = time - previousTimeRef.current;
                 if (deltaTime > 10) {
                     console.log("next!")
-                    next(mousePosition.current)
+                    next(mousePositionRef.current)
                 }
             }
     
@@ -264,9 +300,10 @@
         setTextItems(state.textNodes.map((text, index) => createTextItem(text, index)))
 
         // init distance between the mouse and rolling center x axis
-        let mouseX0 = state.initSpeed * Math.sin(state.direction * (Math.PI / 180));
+        let mouseX0 = initSpeedRef.current * Math.sin(directionRef.current * (Math.PI / 180));
         // init distance between the mouse and rolling center y axis
-        let mouseY0 = -state.initSpeed * Math.cos(state.direction * (Math.PI / 180));
+        let mouseY0 = -initSpeedRef.current * Math.cos(directionRef.current * (Math.PI / 180));
+
         console.log("mouse x: " + mouseX0 + " - mouse y: " + mouseY0)
         mouseX0Ref.current = mouseX0
         mouseY0Ref.current = mouseY0
@@ -274,19 +311,35 @@
         // current distance between the mouse and rolling center x/y axis
         console.log("set initial mouse pos ", mouseX0, mouseY0)
         let position = { x: mouseX0, y: mouseY0 }
-        mousePosition.current = position
+        mousePositionRef.current = position
         next(position)
 
-        requestRef.current = requestAnimationFrame(animate);
+        setTimeout(() => {
+            requestRef.current = requestAnimationFrame(animate);
+        }, 10)
 
         return () => cancelAnimationFrame(requestRef.current)
     }, [])
- 
-     return (
-        <div ref={ref} onMouseOver={(e) => isActive.current = true} onMouseOut={(e) => isActive.current = false}>
-            <h1>test</h1>
-            {renderElements()}
-            <p>x: {mousePosition.current.x || 0} | y: {mousePosition.current.y || 0}</p>
-        </div>
-     )
- }
+    
+    const handleMouseOver = (e) => {
+        console.log(">> mouse over")
+        isActive.current = true
+    }
+
+    const handleMouseOut = (e) => {
+        console.log("<< mouse out")
+        isActive.current = false
+    }
+
+    return (
+        <Row>
+            <Col xs={{span: 12}} md={{span: 10, offset: 1}} lg={{span: 8, offset: 2}} xl={{span: 6, offset: 3}}>
+                <div ref={ref} onMouseOver={(e) => handleMouseOver(e)} onMouseOut={(e) => handleMouseOut(e)}>
+                    {renderElements()}
+                    <p>width: {width}</p>
+                    <p>x: {mousePositionRef.current.x || 0} | y: {mousePositionRef.current.y || 0}</p>
+                </div>
+            </Col>
+        </Row>
+    )
+}
